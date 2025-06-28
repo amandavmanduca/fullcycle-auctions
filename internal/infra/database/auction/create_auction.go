@@ -2,6 +2,7 @@ package auction
 
 import (
 	"context"
+	"fullcycle-auction_go/configuration/configs"
 	"fullcycle-auction_go/configuration/logger"
 	"fullcycle-auction_go/internal/entity/auction_entity"
 	"fullcycle-auction_go/internal/internal_error"
@@ -19,13 +20,19 @@ type AuctionEntityMongo struct {
 	Timestamp   int64                           `bson:"timestamp"`
 }
 type AuctionRepository struct {
-	Collection *mongo.Collection
+	Collection       *mongo.Collection
+	expiringAuctions ExpiringAuctions
 }
 
-func NewAuctionRepository(database *mongo.Database) *AuctionRepository {
-	return &AuctionRepository{
+func NewAuctionRepository(database *mongo.Database, cf *configs.Configs) *AuctionRepository {
+	ar := &AuctionRepository{
 		Collection: database.Collection("auctions"),
+		expiringAuctions: ExpiringAuctions{
+			interval: cf.AuctionInterval,
+		},
 	}
+	go ar.checkOpenAuctions(context.Background())
+	return ar
 }
 
 func (ar *AuctionRepository) CreateAuction(
@@ -45,6 +52,7 @@ func (ar *AuctionRepository) CreateAuction(
 		logger.Error("Error trying to insert auction", err)
 		return internal_error.NewInternalServerError("Error trying to insert auction")
 	}
+	ar.handleCloseAuction(ctx, *auctionEntity)
 
 	return nil
 }

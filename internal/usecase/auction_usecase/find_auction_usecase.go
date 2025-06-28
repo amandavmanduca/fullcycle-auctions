@@ -30,8 +30,9 @@ func (au *AuctionUseCase) FindAuctions(
 	ctx context.Context,
 	status AuctionStatus,
 	category, productName string) ([]AuctionOutputDTO, *internal_error.InternalError) {
+	statusFilter := auction_entity.AuctionStatus(status)
 	auctionEntities, err := au.auctionRepositoryInterface.FindAuctions(
-		ctx, auction_entity.AuctionStatus(status), category, productName)
+		ctx, &statusFilter, category, productName)
 	if err != nil {
 		return nil, err
 	}

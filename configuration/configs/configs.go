@@ -12,7 +12,8 @@ type Configs struct {
 
 func GetConfigs() *Configs {
 	return &Configs{
-		AuctionInterval: getAuctionInterval(),
+		AuctionInterval:   getAuctionInterval(),
+		CheckOpenAuctions: false,
 	}
 }
 

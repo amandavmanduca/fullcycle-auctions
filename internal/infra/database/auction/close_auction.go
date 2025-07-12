@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
+
 	"go.uber.org/zap"
 )
 
@@ -27,21 +29,21 @@ func (ar *AuctionRepository) handleCloseAuction(ctx context.Context, auction auc
 	ar.expiringAuctions.auctions[auction.Id] = auction
 
 	ctx, _ = context.WithCancel(ctx)
-	go func(bgCtx context.Context) {
-		endTime := auction.Timestamp.Add(ar.expiringAuctions.interval)
+	go func(bgCtx context.Context, currentAuction auction_entity.Auction) {
+		endTime := currentAuction.Timestamp.Add(ar.expiringAuctions.interval)
 		sleep := time.Until(endTime)
 		select {
 		case <-time.After(sleep):
-			err := ar.closeAuction(bgCtx, &auction)
+			err := ar.closeAuction(bgCtx, &currentAuction)
 			if err != nil {
 				logger.Error("Error closing auction:", err)
 			}
-			ar.removeAuction(bgCtx, auction)
+			ar.removeAuction(bgCtx, currentAuction)
 		case <-bgCtx.Done():
-			logger.Info("Auction expiration goroutine canceled", zap.String("auction_id", auction.Id))
+			logger.Info("Auction expiration goroutine canceled", zap.String("auction_id", currentAuction.Id))
 			return
 		}
-	}(ctx)
+	}(ctx, auction)
 }
 
 func (ar *AuctionRepository) removeAuction(_ context.Context, auction auction_entity.Auction) {
@@ -75,17 +77,12 @@ func (ar *AuctionRepository) closeAuction(ctx context.Context, auctionEntity *au
 		return err
 	}
 
-	foundAuction.Status = auction_entity.Completed
-	auctionEntityMongo := &AuctionEntityMongo{
-		Id:          foundAuction.Id,
-		ProductName: foundAuction.ProductName,
-		Category:    foundAuction.Category,
-		Description: foundAuction.Description,
-		Condition:   foundAuction.Condition,
-		Status:      foundAuction.Status,
-		Timestamp:   foundAuction.Timestamp.Unix(),
-	}
-	_, updateErr := ar.Collection.UpdateByID(ctx, foundAuction.Id, auctionEntityMongo)
+	filter := bson.M{"_id": foundAuction.Id}
+	update := bson.M{"$set": bson.M{
+		"status": auction_entity.Completed,
+	}}
+
+	_, updateErr := ar.Collection.UpdateOne(ctx, filter, update)
 	if updateErr != nil {
 		logger.Error(fmt.Sprintf("Error trying to update auction = %s", auctionEntity.Id), updateErr)
 		return internal_error.NewInternalServerError("Error trying to update auction")

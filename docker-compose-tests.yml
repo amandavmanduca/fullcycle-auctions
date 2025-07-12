@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb-tests
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGODB_URL=mongodb://admin:admin@mongodb-tests:27017/test?authSource=admin
+      - MONGODB_DB=test
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - localNetwork
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  localNetwork:
+    driver: bridge

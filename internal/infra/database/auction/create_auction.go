@@ -6,6 +6,7 @@ import (
 	"fullcycle-auction_go/configuration/logger"
 	"fullcycle-auction_go/internal/entity/auction_entity"
 	"fullcycle-auction_go/internal/internal_error"
+	"sync"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -29,9 +30,13 @@ func NewAuctionRepository(database *mongo.Database, cf *configs.Configs) *Auctio
 		Collection: database.Collection("auctions"),
 		expiringAuctions: ExpiringAuctions{
 			interval: cf.AuctionInterval,
+			auctions: make(map[string]auction_entity.Auction),
+			mu:       sync.Mutex{},
 		},
 	}
-	go ar.checkOpenAuctions(context.Background())
+	if cf.CheckOpenAuctions {
+		go ar.checkOpenAuctions(context.Background())
+	}
 	return ar
 }
 

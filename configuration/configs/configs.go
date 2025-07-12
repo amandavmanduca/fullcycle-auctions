@@ -6,7 +6,8 @@ import (
 )
 
 type Configs struct {
-	AuctionInterval time.Duration
+	AuctionInterval   time.Duration
+	CheckOpenAuctions bool
 }
 
 func GetConfigs() *Configs {

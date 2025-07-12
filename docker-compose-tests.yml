@@ -7,8 +7,9 @@ services:
     ports:
       - "27017:27017"
     environment:
-      - MONGODB_URL=mongodb://admin:admin@mongodb-tests:27017/test?authSource=admin
-      - MONGODB_DB=test
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_DATABASE: test
     volumes:
       - mongo-data:/data/db
     networks:
